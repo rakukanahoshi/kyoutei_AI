@@ -1,14 +1,14 @@
+from numpy import NaN
 from urllib3 import Retry
 import pandas as pd
 import datetime
+import requests
+from bs4 import BeautifulSoup
 
-Player_Win = [ "RaceID", "PlayerID",
+Player_Win = [ 
                 "q_Total_2", "q_Total_3", "h_Total_2", "h_Total_3",
                 "q_Venue_2", "q_Venue_3", "h_Venue_2", "h_Venue_3"]
 
-New_col = 'insert_1_1 insert_1_2 insert_2_1 insert_2_2 insert_3_1 insert_3_2 insert_4_1 insert_4_2 insert_5_1 insert_5_2 insert_6_1 insert_6_2 insert_7_1 insert_7_2 \
-            start_timing_1_1 start_timing_1_2 start_timing_2_1 start_timing_2_2 start_timing_3_1 start_timing_3_2 start_timing_4_1 start_timing_4_2 start_timing_5_1 start_timing_5_2 start_timing_6_1 start_timing_6_2 start_timing_7_1 start_timing_7_2 \
-            rank_1_1 rank_1_2 rank_2_1 rank_2_2 rank_3_1 rank_3_2 rank_4_1 rank_4_2 rank_5_1 rank_5_2 rank_6_1 rank_6_2 rank_7_1 rank_7_2'.split()
 
 def parse(df):
     """変なインデックスと重複を除去"""
@@ -82,6 +82,10 @@ split_inner_data(df, race_id)
 
 #開催中のレース成績をまとめる
 def Open_Grades_sort(target_info):
+    New_col = 'insert_1_1 insert_1_2 insert_2_1 insert_2_2 insert_3_1 insert_3_2 insert_4_1 insert_4_2 insert_5_1 insert_5_2 insert_6_1 insert_6_2 insert_7_1 insert_7_2 \
+            start_timing_1_1 start_timing_1_2 start_timing_2_1 start_timing_2_2 start_timing_3_1 start_timing_3_2 start_timing_4_1 start_timing_4_2 start_timing_5_1 start_timing_5_2 start_timing_6_1 start_timing_6_2 start_timing_7_1 start_timing_7_2 \
+            rank_1_1 rank_1_2 rank_2_1 rank_2_2 rank_3_1 rank_3_2 rank_4_1 rank_4_2 rank_5_1 rank_5_2 rank_6_1 rank_6_2 rank_7_1 rank_7_2'.split()
+
     dfs_dummy = pd.DataFrame(index=[])
     dfs = pd.read_html(target_info, encoding="utf-8")
     dfs_ = dfs[0]["レースNo（艇番色）進入コースSTタイミング成績", "レースNo（艇番色）進入コースSTタイミング成績"]
@@ -101,12 +105,13 @@ def Open_Grades_sort(target_info):
 
 
 #半期、四半期の勝率
-def player_win_rate(race_id, player_ID):
+def player_win_rate_cal(rid, player_ID):
     Player_Win_Rate = pd.DataFrame(index=[], columns=Player_Win)
+    PlayerRankData = pd.read_csv("data/PlayerRankData.csv", encoding="utf-8")
 
     ## 変数
     #レースID 01_20140102_10
-    day = race_id[3:7] + "-" + race_id[7:9] + "-" + race_id[9:11]
+    day = rid[3:7] + "-" + rid[7:9] + "-" + rid[9:11]
 
     #開催日、半期、四半期
     open_day = datetime.datetime.strptime(day, '%Y-%m-%d') #Dayの値を持ってきたい
@@ -118,7 +123,7 @@ def player_win_rate(race_id, player_ID):
     bf_q_day = str(bf_q_day.date())
 
     #開催地
-    open_place = int(race_id[0:2])
+    open_place = int(rid[0:2])
     #プレイヤー
     player_ID
 
@@ -128,7 +133,6 @@ def player_win_rate(race_id, player_ID):
     PRD_Q_Period = PlayerRankData.query(f'"{bf_q_day}" <= Day <= "{open_day}"')#開催日から4半期さかのぼる処理を書きたい
 
     #開催地のデータ―
-    #Placeを変数にする
     PRD_Loc_H_Period = PRD_H_Period.query(f"{open_place} == Place") #半期の開催地のデータ
     PRD_Loc_Q_Period = PRD_Q_Period.query(f"{open_place} == Place") #四半期の開催地のデータ
 
@@ -144,7 +148,7 @@ def player_win_rate(race_id, player_ID):
     #半期の全出場回数が200未満はnanをとりあえず入れる。
     #後で平均値よりしたの値を代入
 
-    if len(Player_Turn_Sum) >= 0:
+    if len(Player_Turn_Sum) >= 100:
         # 半期毎
         ## 全開催地の勝率を計算
         PRD_H_1st = PRD_H_Period['PlayerID'][PRD_H_Period['Rank']=="１"].value_counts() / PRD_H_Period['PlayerID'].value_counts()
@@ -161,12 +165,12 @@ def player_win_rate(race_id, player_ID):
         Player_Win_Rate.loc[1,"h_Total_3"] = TW_H_Rate[player_ID]
 
     else:
-        Player_Win_Rate.loc[1,"h_Total_2"] = None
-        Player_Win_Rate.loc[1,"h_Total_3"] = None
+        Player_Win_Rate.loc[1,"h_Total_2"] = NaN
+        Player_Win_Rate.loc[1,"h_Total_3"] = NaN
 
 
 
-    if len(Player_Loc_Turn_Sum) > 0:
+    if len(Player_Loc_Turn_Sum) > 8:
         ##開催地の勝率を計算
         PRD_Loc_H_1st = PRD_Loc_H_Period['PlayerID'][PRD_Loc_H_Period['Rank']=="１"].value_counts() / PRD_Loc_H_Period['PlayerID'].value_counts()
         PRD_Loc_H_2nd = PRD_Loc_H_Period['PlayerID'][PRD_Loc_H_Period['Rank']=="２"].value_counts() / PRD_Loc_H_Period['PlayerID'].value_counts()
@@ -180,14 +184,11 @@ def player_win_rate(race_id, player_ID):
         Player_Win_Rate.loc[1,"q_Venue_2"] = DW_Loc_H_Rate[player_ID]
         Player_Win_Rate.loc[1,"q_Venue_2"] = TW_Loc_H_Rate[player_ID]
 
-
     else:
-        Player_Win_Rate.loc[1,"q_Venue_2"] = None
-        Player_Win_Rate.loc[1,"q_Venue_2"] = None
+        Player_Win_Rate.loc[1,"q_Venue_2"] = NaN
+        Player_Win_Rate.loc[1,"q_Venue_2"] = NaN
 
-
-    #開催地毎の勝率
-    if len(Player_Q_Turn_Sum) >= 0:
+    if len(Player_Q_Turn_Sum) >= 40:
         #四半期毎
         ##全開催地の勝率を計算
         PRD_Q_1st = PRD_Q_Period['PlayerID'][PRD_Q_Period['Rank']=="１"].value_counts() / PRD_Q_Period['PlayerID'].value_counts()
@@ -203,12 +204,12 @@ def player_win_rate(race_id, player_ID):
         Player_Win_Rate.loc[1,"q_Total_3"] = TW_Q_Rate[player_ID]
 
     else:
-        Player_Win_Rate.loc[1,"q_Total_2"] = None
-        Player_Win_Rate.loc[1,"q_Total_3"] = None
+        Player_Win_Rate.loc[1,"q_Total_2"] = NaN
+        Player_Win_Rate.loc[1,"q_Total_3"] = NaN
 
 
-    if len(Player_Q_Loc_Turn_Sum) > 0:
-        ##開催地の勝率を計算
+    if len(Player_Q_Loc_Turn_Sum) > 4:
+        ##開催地の四半期の勝率を計算
         PRD_Loc_Q_1st = PRD_Loc_Q_Period['PlayerID'][PRD_Loc_Q_Period['Rank']=="１"].value_counts() / PRD_Loc_Q_Period['PlayerID'].value_counts()
         PRD_Loc_Q_2nd = PRD_Loc_Q_Period['PlayerID'][PRD_Loc_Q_Period['Rank']=="２"].value_counts() / PRD_Loc_Q_Period['PlayerID'].value_counts()
         PRD_Loc_Q_3rd = PRD_Loc_Q_Period['PlayerID'][PRD_Loc_Q_Period['Rank']=="３"].value_counts() / PRD_Loc_Q_Period['PlayerID'].value_counts()
@@ -222,10 +223,15 @@ def player_win_rate(race_id, player_ID):
         Player_Win_Rate.loc[1,"q_Venue_3"] = TW_Loc_Q_Rate[player_ID]
 
     else:
-        Player_Win_Rate.loc[1,"q_Venue_2"] = None
-        Player_Win_Rate.loc[1,"q_Venue_3"] = None
+        Player_Win_Rate.loc[1,"q_Venue_2"] = NaN
+        Player_Win_Rate.loc[1,"q_Venue_3"] = NaN
 
 
-    Player_Win_Rate.loc[1,"PlayerID"] = player_ID #PlayerIDの変数
-    Player_Win_Rate.loc[1,"RaceID"] = race_id #PlayerIDの変数
+    #Player_Win_Rate.loc[1,"PlayerID"] = player_ID #PlayerIDの変数
+    #Player_Win_Rate.loc[1,"raceID"] = rid #PlayerIDの変数
+
+    return Player_Win_Rate
+
+def bort_color():
+    New_col = "bort_color_1_1 bort_color_1_2 bort_color_2_1 bort_color_2_2 bort_color_3_1 bort_color_3_2 bort_color_4_1 bort_color_4_2 bort_color_5_1 bort_color_5_2 bort_color_6_1 bort_color_6_2 bort_color_7_1 bort_color_7_2".split()
 
