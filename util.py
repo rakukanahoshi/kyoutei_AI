@@ -5,9 +5,7 @@ import datetime
 import requests
 from bs4 import BeautifulSoup
 
-Player_Win = [ 
-                "q_Total_2", "q_Total_3", "h_Total_2", "h_Total_3",
-                "q_Venue_2", "q_Venue_3", "h_Venue_2", "h_Venue_3"]
+
 
 
 def parse(df):
@@ -106,6 +104,10 @@ def Open_Grades_sort(target_info):
 
 #半期、四半期の勝率
 def player_win_rate_cal(rid, player_ID):
+    Player_Win = [ 
+                "q_Total_2", "q_Total_3", "h_Total_2", "h_Total_3",
+                "q_Venue_2", "q_Venue_3", "h_Venue_2", "h_Venue_3"]
+
     Player_Win_Rate = pd.DataFrame(index=[], columns=Player_Win)
     PlayerRankData = pd.read_csv("data/PlayerRankData.csv", encoding="utf-8")
 
