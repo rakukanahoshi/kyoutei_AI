@@ -234,6 +234,32 @@ def player_win_rate_cal(rid, player_ID):
 
     return Player_Win_Rate
 
-def bort_color():
+#開催期間中の出場レースの艇番
+def bort_color(load_url):
+    #load_url = target_info
+    target_col = "0 1 2 3 4 5 6 7 8 9 10 11 12 13".split()
     New_col = "bort_color_1_1 bort_color_1_2 bort_color_2_1 bort_color_2_2 bort_color_3_1 bort_color_3_2 bort_color_4_1 bort_color_4_2 bort_color_5_1 bort_color_5_2 bort_color_6_1 bort_color_6_2 bort_color_7_1 bort_color_7_2".split()
 
+    df_boat_color = pd.DataFrame(index=[], columns=target_col)
+    #html = requests.get(load_url)
+
+    soup = BeautifulSoup(open(load_url, encoding="utf-8"), "lxml")
+
+    for i in range(6):
+        is_fs = soup.find_all("tbody",attrs={"class":"is-fs12"})[i]
+        table = is_fs.find_all("td")
+
+        for x in range(9,23):#9,23
+            if table[x].string:
+                target_tag = str(is_fs.find_all("td")[x])
+                col_name = str(x-9)
+                #print("is-boatColor" in target_tag)
+                #文字列にis-boatColorがあるかどうか
+                #あればis-boatColorXのXをPandasに格納する
+                if "is-boatColor" in target_tag:
+                    df_boat_color.loc[i, col_name] = int(target_tag[23:24])
+                else:
+                    df_boat_color.loc[i, col_name] = "NaN"
+
+    df_boat_color.columns = New_col            
+    return df_boat_color
