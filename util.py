@@ -263,3 +263,41 @@ def bort_color(load_url):
 
     df_boat_color.columns = New_col            
     return df_boat_color
+
+def weather_condition(load_url):
+    weather_columns = "temp whether win_s win_a temp_w wave_h".split()
+    df_weather_conditions = pd.DataFrame(index=[], columns=weather_columns)
+
+    soup = BeautifulSoup(open(load_url, encoding="utf-8"), "lxml")
+
+    weather_bodys = soup.find_all("div", attrs={"class":"weather1_body"})[0]
+    weather_body = weather_bodys.find_all("div", attrs={"class":"weather1_bodyUnitLabel"})
+
+    weather_list = []
+
+    for i in range(len(weather_body)):
+        weather_text = weather_body[i].text
+        weather_text = weather_text.split("\n")
+        del weather_text[0]
+        del weather_text[-1]
+
+        weather_list.append(weather_text)
+
+    #weather_wind_a = 
+    weather_wind_a = weather_bodys.select('[class^=weather1_bodyUnitImage]')[2]
+
+    weather_wind_a = str(weather_wind_a)
+
+    target = 'is-wind'
+    idx = weather_wind_a.find(target)
+    r = weather_wind_a[idx+len(target):]
+    r = r.replace('"></p>', "")
+
+    df_weather_conditions.loc[0, "temp"] = weather_list[0][1].replace("℃", "")
+    df_weather_conditions.loc[0, "whether"] = weather_list[1][0]
+    df_weather_conditions.loc[0, "win_s"] = weather_list[2][1].replace("m", "")
+    df_weather_conditions.loc[0, "win_a"] = r
+    df_weather_conditions.loc[0, "temp_w"] = weather_list[3][1].replace("℃", "")
+    df_weather_conditions.loc[0, "wave_h"] = weather_list[4][1].replace("cm", "")
+
+    return df_weather_conditions.loc[0]
